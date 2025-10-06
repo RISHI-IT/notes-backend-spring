@@ -1,13 +1,28 @@
-# Stage 1: Build the application
-FROM maven:3.8.5-openjdk-17 AS build
-WORKDIR /app
-COPY . .
-RUN mvn clean package -DskipTests
+# Use OpenJDK 21 base image
+FROM openjdk:21-jdk-slim
 
-# Stage 2: Create the runtime image
-FROM openjdk:17-jdk-slim
+# Set working directory
 WORKDIR /app
-# Replace `your-project-name-0.0.1-SNAPSHOT.jar` with the actual filename
-COPY --from=build /app/target/notes-ai-0.0.1-SNAPSHOT.jar app.jar
+
+# Copy Maven wrapper and pom.xml
+COPY mvnw .
+COPY .mvn .mvn
+COPY pom.xml .
+
+# Make Maven wrapper executable
+RUN chmod +x mvnw
+
+# Download dependencies
+RUN ./mvnw dependency:go-offline
+
+# Copy the rest of the project
+COPY src ./src
+
+# Build the application
+RUN ./mvnw clean package -DskipTests
+COPY --from=build /app/target/your-project-name-0.0.1-SNAPSHOT.jar app.jar
+# Expose the port your app runs on
 EXPOSE 8080
+
+# Run the JAR file
 ENTRYPOINT ["java", "-jar", "app.jar"]
